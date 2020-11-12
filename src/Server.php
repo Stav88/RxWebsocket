@@ -38,7 +38,7 @@ class Server extends Observable
         $this->loop             = $loop ?: \EventLoop\getLoop();
         $this->keepAlive        = $keepAlive;
         $this->negotiator       = $negotiator ?: new ServerNegotiator(new RequestVerifier());
-        if (!empty($subProtocols) {
+        if (!empty($subProtocols)) {
             trigger_error('$subProtocols parameter is deprecated, use $negotiator parmeter using setSupportedSubProtocols()', E_USER_DEPRECATED);
             $negotiator->setSupportedSubProtocols($this->subProtocols);
         }
