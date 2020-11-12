@@ -24,30 +24,41 @@ class Server extends Observable
 {
     protected $bindAddress;
     protected $port;
+    private $negotiator;
     private $useMessageObject;
     private $subProtocols;
     private $loop;
     private $keepAlive;
 
-    public function __construct(string $bindAddressOrPort, bool $useMessageObject = false, array $subProtocols = [], LoopInterface $loop = null, int $keepAlive = 60000)
+    public function __construct(string $bindAddressOrPort, bool $useMessageObject = false, array $subProtocols = [], LoopInterface $loop = null, int $keepAlive = 60000, ServerNegotiator $negotiator = null)
     {
         $this->bindAddress      = $bindAddressOrPort;
         $this->useMessageObject = $useMessageObject;
         $this->subProtocols     = $subProtocols;
         $this->loop             = $loop ?: \EventLoop\getLoop();
         $this->keepAlive        = $keepAlive;
+        $this->negotiator       = $negotiator ?: new ServerNegotiator(new RequestVerifier());
+        if (!empty($subProtocols) {
+            trigger_error('$subProtocols parameter is deprecated, use $negotiator parmeter using setSupportedSubProtocols()', E_USER_DEPRECATED);
+            $negotiator->setSupportedSubProtocols($this->subProtocols);
+        }
+    }
+    
+    public function getNegotiator(): ServerNegotiator
+    {
+        return $this->negotiator;
+    }
+    
+    public function setNegotiator(ServerNegotiator $negotiator): void
+    {
+        $this->negotiator = $negotiator;
     }
 
     public function _subscribe(ObserverInterface $observer): DisposableInterface
     {
         $socket = new SocketServer($this->bindAddress, $this->loop);
 
-        $negotiator = new ServerNegotiator(new RequestVerifier());
-        if (!empty($this->subProtocols)) {
-            $negotiator->setSupportedSubProtocols($this->subProtocols);
-        }
-
-        $http = new HttpServer(function (ServerRequestInterface $request) use ($negotiator, $observer) {
+        $http = new HttpServer(function (ServerRequestInterface $request) use ($observer) {
             $uri = $request->getUri();
 
             $psrRequest = new Request(
@@ -60,7 +71,7 @@ class Server extends Observable
             // the user will have access to it
             $psrRequest = $psrRequest->withAddedHeader('X-RxWebsocket-Remote-Address', $request->getServerParams()['REMOTE_ADDR'] ?? '');
 
-            $negotiatorResponse = $negotiator->handshake($psrRequest);
+            $negotiatorResponse = $this->negotiator->handshake($psrRequest);
 
             /** @var ReadableStreamInterface $requestStream */
             $requestStream  = new ThroughStream();
