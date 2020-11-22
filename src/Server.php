@@ -91,7 +91,7 @@ class Server extends Observable
 
             if ($negotiatorResponse->getStatusCode() !== 101) {
                 $responseStream->end();
-                return;
+                return $negotiatorResponse;
             }
 
             $subProtocol = "";
