@@ -146,6 +146,10 @@ class Server extends Observable
             return $response;
         });
 
+        $http->on('error', function ($error) use ($observer) {
+            $observer->onError($error);
+        });
+
         $http->listen($socket);
 
         return new CallbackDisposable(function () use ($socket) {
